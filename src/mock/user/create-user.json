@@ -1,0 +1,10 @@
+{
+    "privyId": "privy-123",
+    "name": "John Doe",
+    "email": "john@example.com",
+    "submissionQuatity": 0,
+    "organizationId": "org-uuid-123",
+    "photo": "https://example.com/photo.jpg",
+    "jobTitle": "Analyst",
+    "wallet": "0x1234567890abcdef"
+}

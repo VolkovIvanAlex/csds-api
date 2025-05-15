@@ -1,0 +1,277 @@
+{
+    "version": "0.1.0",
+    "name": "csds",
+    "instructions": [
+      {
+        "name": "initialize",
+        "accounts": [],
+        "args": []
+      },
+      {
+        "name": "createReport",
+        "accounts": [
+          {
+            "name": "reportCollection",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "reportData",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "metadataAccount",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "collection",
+            "isMut": true,
+            "isSigner": true
+          },
+          {
+            "name": "ownerNft",
+            "isMut": true,
+            "isSigner": true
+          },
+          {
+            "name": "updateAuthority",
+            "isMut": false,
+            "isSigner": true
+          },
+          {
+            "name": "creator",
+            "isMut": true,
+            "isSigner": true
+          },
+          {
+            "name": "mplTokenMetadataProgram",
+            "isMut": false,
+            "isSigner": false
+          },
+          {
+            "name": "systemProgram",
+            "isMut": false,
+            "isSigner": false
+          },
+          {
+            "name": "mplCoreProgram",
+            "isMut": false,
+            "isSigner": false
+          }
+        ],
+        "args": [
+          {
+            "name": "reportId",
+            "type": "u64"
+          },
+          {
+            "name": "reportName",
+            "type": "string"
+          },
+          {
+            "name": "contentUri",
+            "type": "string"
+          },
+          {
+            "name": "collectionName",
+            "type": "string"
+          },
+          {
+            "name": "collectionUri",
+            "type": "string"
+          },
+          {
+            "name": "organizationName",
+            "type": "string"
+          }
+        ]
+      },
+      {
+        "name": "shareReport",
+        "accounts": [
+          {
+            "name": "reportCollection",
+            "isMut": false,
+            "isSigner": false
+          },
+          {
+            "name": "shareData",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "collection",
+            "isMut": true,
+            "isSigner": true
+          },
+          {
+            "name": "shareNft",
+            "isMut": true,
+            "isSigner": true
+          },
+          {
+            "name": "creator",
+            "isMut": true,
+            "isSigner": true
+          },
+          {
+            "name": "sharedOrg",
+            "isMut": false,
+            "isSigner": false
+          },
+          {
+            "name": "systemProgram",
+            "isMut": false,
+            "isSigner": false
+          },
+          {
+            "name": "mplCoreProgram",
+            "isMut": false,
+            "isSigner": false
+          }
+        ],
+        "args": [
+          {
+            "name": "reportId",
+            "type": "u64"
+          },
+          {
+            "name": "reportName",
+            "type": "string"
+          },
+          {
+            "name": "shareIndex",
+            "type": "u64"
+          },
+          {
+            "name": "contentUri",
+            "type": "string"
+          }
+        ]
+      },
+      {
+        "name": "revokeShare",
+        "accounts": [
+          {
+            "name": "reportCollection",
+            "isMut": false,
+            "isSigner": false
+          },
+          {
+            "name": "shareData",
+            "isMut": true,
+            "isSigner": false
+          },
+          {
+            "name": "collection",
+            "isMut": true,
+            "isSigner": true
+          },
+          {
+            "name": "shareNft",
+            "isMut": true,
+            "isSigner": true
+          },
+          {
+            "name": "creator",
+            "isMut": true,
+            "isSigner": true
+          },
+          {
+            "name": "sharedOrg",
+            "isMut": false,
+            "isSigner": false
+          },
+          {
+            "name": "systemProgram",
+            "isMut": false,
+            "isSigner": false
+          },
+          {
+            "name": "mplCoreProgram",
+            "isMut": false,
+            "isSigner": false
+          }
+        ],
+        "args": [
+          {
+            "name": "reportId",
+            "type": "u64"
+          },
+          {
+            "name": "shareIndex",
+            "type": "u64"
+          }
+        ]
+      }
+    ],
+    "accounts": [
+      {
+        "name": "ReportCollection",
+        "type": {
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "reportId",
+              "type": "u64"
+            },
+            {
+              "name": "collectionKey",
+              "type": "publicKey"
+            },
+            {
+              "name": "ownerNft",
+              "type": "publicKey"
+            },
+            {
+              "name": "creator",
+              "type": "publicKey"
+            }
+          ]
+        }
+      },
+      {
+        "name": "ReportData",
+        "type": {
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "reportId",
+              "type": "u64"
+            },
+            {
+              "name": "contentUri",
+              "type": "string"
+            },
+            {
+              "name": "isOwnerNft",
+              "type": "bool"
+            },
+            {
+              "name": "sharedWith",
+              "type": {
+                "option": "publicKey"
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "errors": [
+      {
+        "code": 6000,
+        "name": "UpdateAssetError",
+        "msg": "Failed to update soulbound NFT"
+      },
+      {
+        "code": 6001,
+        "name": "UnknownError",
+        "msg": "Unknown error has occured during updating soulbound NFT"
+      }
+    ],
+    "metadata": {
+      "address": "BHeAkLVix2i8wkhqPsNZ2oHJ4HqhXw1EFno9G8SfAqG8"
+    }
+  }
