@@ -1,0 +1,118 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id                String   @id @default(uuid())
+  privyId           String   @unique @db.VarChar(255)
+  role              String?
+  name              String
+  email             String   @unique
+  submissionQuatity Int
+  organizationId    String?
+  photo             String?
+  jobTitle          String?
+  organizations     UserOrganization[] // New many-to-many relation
+  foundedOrgs       Organization[]  @relation("OrgFounder")
+  reports           Report[]     @relation("Author")
+  session           Session?
+}
+
+model Session {
+  sessionId String   @id
+  expiresAt DateTime
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model Organization {
+  id                    String   @id @default(uuid())
+  name                  String
+  wallet                String?
+  founderId             String
+  founder               User    @relation("OrgFounder", fields: [founderId], references: [id])
+  users                 UserOrganization[]
+  reports               Report[] @relation("OrganizationReports")
+  sharedReportsSent     SharedReportsWithOrganizations[] @relation("SourceOrg")
+  sharedReportsReceived SharedReportsWithOrganizations[] @relation("TargetOrg")
+  orgNotifications      OrganizationNotification[]
+}
+
+model UserOrganization {
+  userId         String
+  organizationId String
+  user           User         @relation(fields: [userId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@id([userId, organizationId])
+}
+
+model Report {
+  id              String   @id @default(uuid())
+  title           String
+  description     String
+  attachments     String[]
+  typeOfThreat    String
+  status          String   // Replaced enum with String
+  severity        String   // Replaced enum with String
+  submittedAt     DateTime?
+  submitted       Boolean @default(false)
+  stix            String
+  blockchainHash  String?
+  collectionAddress  String?
+  collectionPrivateKey  String?
+  authorId        String
+  riskScore       Float?
+  emailsToShare   String[]
+  organizationId  String
+  author          User     @relation("Author", fields: [authorId], references: [id])
+  organization    Organization @relation("OrganizationReports", fields: [organizationId], references: [id])
+  notifications   NotificationReport[]
+  sharedReports   SharedReportsWithOrganizations[] @relation("ReportSharedWithOrganizations")
+}
+
+model SharedReportsWithOrganizations {
+  sourceOrgId   String
+  targetOrgId   String
+  reportId      String
+  sharedAt      DateTime
+  acceptedShare Boolean @default(false)
+  blockchainHash String?
+  nftPrivateKey  String?
+  sourceOrg     Organization @relation("SourceOrg", fields: [sourceOrgId], references: [id])
+  targetOrg     Organization @relation("TargetOrg", fields: [targetOrgId], references: [id])
+  report        Report       @relation("ReportSharedWithOrganizations", fields: [reportId], references: [id])
+  @@id([sourceOrgId, targetOrgId, reportId])
+}
+
+model Notification {
+  id            String   @id @default(uuid())
+  title         String
+  description   String
+  status        String
+  severity      String   // Replaced enum with String
+  emails        String[] // For external email recipients
+  organizations OrganizationNotification[] // Many-to-many with Organization
+  reports       NotificationReport[]       // Many-to-many with Report
+}
+
+model OrganizationNotification {
+  organizationId String
+  notificationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  notification   Notification @relation(fields: [notificationId], references: [id])
+  @@id([organizationId, notificationId])
+}
+
+model NotificationReport {
+  notificationId String
+  reportId       String
+  notification   Notification @relation(fields: [notificationId], references: [id])
+  report         Report       @relation(fields: [reportId], references: [id])
+  @@id([notificationId, reportId])
+}
