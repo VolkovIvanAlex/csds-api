@@ -20,7 +20,7 @@ Each cybersecurity report is represented by a **dedicated NFT collection** on So
 This design clearly distinguishes the original report from its shared instances.
 
 
-- submitReport
+### submitReport method
 
 After submission we store public/private (with encryptPrivateKey) keys of NFT collection/NFT in DB, to avoid creating duplicate collection/nfts for the report.
 
@@ -46,7 +46,7 @@ attributes: [
 ]
 ```
 
-- shareReport
+### shareReport method
 
 
 Shares a report with another organization by generating shareNft : 
@@ -72,8 +72,8 @@ attributes: [
 
 
 
-- revokeShare
+### revokeShare method
 
-We derive reportCollectionPda by report id, shareNftPda by report id and share index. I also use decryptPrivateKey method to retrieve encrypted private key of nft to use Keypair of that nft and pass it to smart contract revoke_share method. 
+We derive reportCollectionPda by report id, shareNftPda by report id and share index. We also use decryptPrivateKey method to retrieve encrypted private key of nft to use Keypair of that nft and pass it to smart contract revoke_share method. 
 
 By calling the revoke_share instruction, burning the associated share NFT, and deleting the share record from Prisma. It validates user authorization, derives PDAs, and ensures the operation is restricted to the report’s organization.
