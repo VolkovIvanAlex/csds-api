@@ -19,10 +19,12 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "start:docker:dev": "docker compose --env-file=.env -f docker-compose.dev.yml up -d",
-    "start:build:docker:dev": "docker compose --env-file=.env -f docker-compose.dev.yml up --build -d"
+    "start:build:docker:dev": "docker compose --env-file=.env -f docker-compose.dev.yml up --build -d",
+    "start:docker:orion": "docker compose --env-file=.env -f docker-compose.orion.yml -p csds-api up -d"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.29.0",
+    "@nestjs/axios": "^4.0.1",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.0.1",

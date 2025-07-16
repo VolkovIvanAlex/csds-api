@@ -77,3 +77,22 @@ attributes: [
 We derive reportCollectionPda by report id, shareNftPda by report id and share index. We also use decryptPrivateKey method to retrieve encrypted private key of nft to use Keypair of that nft and pass it to smart contract revoke_share method. 
 
 By calling the revoke_share instruction, burning the associated share NFT, and deleting the share record from Prisma. It validates user authorization, derives PDAs, and ensures the operation is restricted to the report’s organization.
+
+### Fiware usefull scripts
+
+To get all reports from orion CB :
+
+```
+curl -X GET "http://localhost:1026/ngsi-ld/v1/entities?type=Report" \
+  -H "Accept: application/ld+json" \
+  -H "Fiware-Service: csds" \
+  -H "Fiware-ServicePath: /"
+```
+
+To cler context broker : 
+```
+mongo
+use orion
+db.entities.deleteMany({})
+db.entities.find().pretty()
+```
