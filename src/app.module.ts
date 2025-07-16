@@ -6,6 +6,7 @@ import { PrivyModuleOptions } from './infrastracture/privy/types/privy.types';
 import { UsersModule } from './modules/users/users.module';
 import { OrganizationsModule } from './modules/organization/organization.module';
 import { ReportsModule } from './modules/reports/reports.module';
+import { NGSIModule } from './modules/ngsi/ngsi.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { ReportsModule } from './modules/reports/reports.module';
     UsersModule,
     OrganizationsModule,
     ReportsModule,
+    NGSIModule,
     PrivyModule.registerAsync({
       useFactory: async (
         configService: ConfigService,

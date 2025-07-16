@@ -1,0 +1,37 @@
+services:
+  orion:
+    image: quay.io/fiware/orion-ld
+    hostname: orion
+    container_name: csds-orion
+    depends_on:
+      - mongo-db
+    networks:
+      - default
+    ports:
+      - '1026:1026'
+    command: -dbhost mongo-db -logLevel DEBUG
+    healthcheck:
+      test: curl --fail -s http://orion:1026/version || exit 1
+      interval: 5s
+
+  mongo-db:
+    image: mongo:4.2
+    hostname: mongo-db
+    container_name: csds-mongo-db
+    expose:
+      - '27017'
+    ports:
+      - '27017:27017'
+    volumes:
+      - mongo-db:/data
+    networks:
+      - default
+    command: --nojournal
+
+networks:
+  default:
+    external: true
+    name: csds-api_default
+
+volumes:
+  mongo-db: ~
