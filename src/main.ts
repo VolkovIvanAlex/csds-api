@@ -3,8 +3,8 @@ import { AppModule } from './app.module';
 import ValidationPipes from './core/pipes/validation.pipes';
 import { AllExceptionFilter } from './core/filters/exceptions.filter';
 import { ConfigService } from '@nestjs/config';
-import * as session from 'express-session';
-import * as cookieParser from 'cookie-parser';
+import session from 'express-session';
+import cookieParser from 'cookie-parser';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -20,7 +20,7 @@ async function bootstrap() {
   app.use(cookieParser());
 
   app.enableCors({
-    origin: 'http://localhost:3000',
+    origin: true, //'http://localhost:3000'
     credentials: true,
   });
 
@@ -37,7 +37,7 @@ async function bootstrap() {
   );
 
   //app.useGlobalPipes(new ValidationPipe());
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0');
   console.log(`Application started on port ${port}!`);
 }
 bootstrap();

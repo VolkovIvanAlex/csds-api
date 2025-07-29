@@ -16,6 +16,7 @@ export class OrganizationService {
     const organization = await this.prisma.organization.create({
       data: {
         name: data.name,
+        sphere: data.sphere,
         founderId: userId,
         users: {
           create: {

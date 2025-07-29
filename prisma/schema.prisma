@@ -7,10 +7,17 @@ generator client {
   provider = "prisma-client-js"
 }
 
+enum UserRole {
+  GovBody
+  DataProvider
+  DataConsumer
+  Admin // It's good practice to have an Admin role
+}
+
 model User {
   id                String   @id @default(uuid())
   privyId           String   @unique @db.VarChar(255)
-  role              String?
+  role              UserRole?
   name              String
   email             String   @unique
   submissionQuatity Int
@@ -20,6 +27,7 @@ model User {
   organizations     UserOrganization[] // New many-to-many relation
   foundedOrgs       Organization[]  @relation("OrgFounder")
   reports           Report[]     @relation("Author")
+  proposedResponseActions ResponseAction[]
   session           Session?
 }
 
@@ -33,6 +41,7 @@ model Session {
 model Organization {
   id                    String   @id @default(uuid())
   name                  String
+  sphere                String?
   wallet                String?
   founderId             String
   founder               User    @relation("OrgFounder", fields: [founderId], references: [id])
@@ -74,6 +83,20 @@ model Report {
   organization    Organization @relation("OrganizationReports", fields: [organizationId], references: [id])
   notifications   NotificationReport[]
   sharedReports   SharedReportsWithOrganizations[] @relation("ReportSharedWithOrganizations")
+  responseActions ResponseAction[]
+}
+
+model ResponseAction {
+  id           String   @id @default(uuid())
+  description  String   @db.Text
+  status       String   @default("proposed") // e.g., proposed, accepted, rejected
+  createdAt    DateTime @default(now())
+
+  reportId     String
+  report       Report   @relation(fields: [reportId], references: [id])
+
+  proposedById String
+  proposedBy   User     @relation(fields: [proposedById], references: [id])
 }
 
 model SharedReportsWithOrganizations {

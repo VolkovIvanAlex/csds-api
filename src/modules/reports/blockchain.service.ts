@@ -4,6 +4,7 @@ import { PublicKey, Keypair, SystemProgram, ComputeBudgetProgram } from '@solana
 import { PinataSDK } from 'pinata-web3';
 import { Csds } from 'src/core/types/csds';
 import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
+import idl from '../../config/idl/csds.json'; // <-- 1. IMPORT a clean relative path
 
 const ENCRYPTION_KEY = Buffer.from(process.env.ENCRYPTION_KEY || '', 'hex');
 const IV_LENGTH = 16;
@@ -26,8 +27,8 @@ export class BlockchainService {
     const wallet = new anchor.Wallet(this.adminWalletKeypair);
     this.provider = new anchor.AnchorProvider(connection, wallet, { commitment: 'confirmed' });
     anchor.setProvider(this.provider);
-    const idl = require('../../../csds_contracts/target/idl/csds.json');
-    this.program = new anchor.Program(idl, new PublicKey(process.env.SMART_CONTRACT_ADDRESS || ''), this.provider);
+    //const idl = require('../../../csds_contracts/target/idl/csds.json');
+    this.program = new anchor.Program(idl as any, new PublicKey(process.env.SMART_CONTRACT_ADDRESS || ''), this.provider);
 
     if (!this.adminWalletKeypair) throw new Error('Provider wallet payer is undefined');
   }

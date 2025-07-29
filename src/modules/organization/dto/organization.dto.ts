@@ -9,6 +9,10 @@ export class OrganizationCreateDto {
   @IsString()
   @IsNotEmpty()
   name: string;
+
+  @IsString()
+  @IsOptional()
+  sphere: string;
 }
 
 export class OrganizationUpdateDto {

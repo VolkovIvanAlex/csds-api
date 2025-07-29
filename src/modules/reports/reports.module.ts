@@ -5,10 +5,11 @@ import { ReportController } from './reports.controller';
 import { ReportService } from './reports.service';
 import { NGSIModule } from '../ngsi/ngsi.module';
 import { BlockchainService } from './blockchain.service';
+import { NotificationController } from './notifications.controller';
 
 @Module({
   imports: [AuthModule, PrismaModule, NGSIModule],
-  controllers: [ReportController],
+  controllers: [ReportController, NotificationController],
   providers: [ReportService, BlockchainService],
 })
 export class ReportsModule {}

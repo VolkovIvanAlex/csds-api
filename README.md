@@ -96,3 +96,29 @@ use orion
 db.entities.deleteMany({})
 db.entities.find().pretty()
 ```
+
+This curl command creates a subscription in the Orion Context Broker. It tells Orion: "When any entity of type Report is updated and its submitted property becomes true, send a notification to my API."
+
+```
+curl -X POST 'http://localhost:1026/ngsi-ld/v1/subscriptions' \
+-H 'Content-Type: application/ld+json' \
+-H 'Fiware-Service: csds' \
+-H 'Fiware-ServicePath: /' \
+-d '{
+    "type": "Subscription",
+    "description": "Notify API when a report is submitted",
+    "entities": [{
+        "type": "Report"
+    }],
+    "watchedAttributes": ["submitted"],
+    "q": "submitted==true",
+    "notification": {
+        "endpoint": {
+            "uri": "http://host.docker.internal:8000/api/notifications/submitted",
+            "accept": "application/json"
+        },
+        "format": "keyValues"
+    },
+    "@context": "https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context-v1.8.jsonld"
+}'
+```

@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsArray, IsOptional, IsNumber } from 'class-validator';
+import { IsString, IsNotEmpty, IsArray, IsOptional, IsNumber, MinLength } from 'class-validator';
 export class ReportCreateDto {
   @IsString()
   @IsNotEmpty()
@@ -101,4 +101,20 @@ export class ReportUpdateDto {
   @IsString()
   @IsOptional()
   organizationId?: string;
+}
+
+export class ProposeActionDto {
+  @IsString()
+  @IsNotEmpty()
+  description: string;
+}
+
+// DTO to type the incoming notification from FIWARE
+export class FiwareNotificationDto {
+  subscriptionId: string;
+  data: Array<{
+    id: string;
+    type: string;
+    [key: string]: any;
+  }>;
 }

@@ -8,17 +8,22 @@ Param,
 UseGuards,
 Req,
 Get,
+Inject,
+HttpCode,
+HttpStatus,
 } from '@nestjs/common';
 import { ReportService } from './reports.service';
-import { ReportCreateDto, ReportUpdateDto } from './dto/report.dto';
+import { FiwareNotificationDto, ProposeActionDto, ReportCreateDto, ReportUpdateDto } from './dto/report.dto';
 import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard';
-import { Request } from 'express';
 import { AuthenticatedRequest } from 'src/core/types/auth.types';
   
 @Controller('api/reports')
 @UseGuards(JwtAuthGuard)
 export class ReportController {
-    constructor(private readonly reportService: ReportService) {}
+    constructor() {}
+
+    @Inject()
+    private readonly reportService: ReportService
   
     @Post()
     create(@Body() dto: ReportCreateDto, @Req() req: AuthenticatedRequest) {
@@ -65,5 +70,33 @@ export class ReportController {
         @Req() req: AuthenticatedRequest,
     ) {
         return this.reportService.submitReport(id, req.user['id']);
+    }
+
+    @Post(':id/broadcast')
+    broadcastReport(
+        @Param('id') id: string,
+        @Req() req: AuthenticatedRequest,
+    ) {
+        const userId = req.user['id'];
+        return this.reportService.broadcastToNetwork(id, userId);
+    }
+
+    @Post(':id/response-actions')
+    proposeResponseAction(
+        @Param('id') id: string,
+        @Req() req: AuthenticatedRequest,
+        @Body() dto: ProposeActionDto,
+    ) {
+        const userId = req.user['id'];
+        return this.reportService.proposeResponseAction(id, userId, dto);
+    }
+
+    @Get(':id/response-actions')
+    getResponseActions(
+        @Param('id') id: string,
+        @Req() req: AuthenticatedRequest,
+    ) {
+        const userId = req.user['id'];
+        return this.reportService.getResponseActions(id, userId);
     }
 }

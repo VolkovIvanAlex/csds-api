@@ -2,6 +2,7 @@ services:
   orion:
     image: quay.io/fiware/orion-ld
     hostname: orion
+    platform: linux/amd64
     container_name: csds-orion
     depends_on:
       - mongo-db
@@ -13,6 +14,58 @@ services:
     healthcheck:
       test: curl --fail -s http://orion:1026/version || exit 1
       interval: 5s
+
+  keyrock:
+    image: quay.io/fiware/idm
+    hostname: keyrock
+    platform: linux/amd64
+    container_name: csds-keyrock
+    depends_on:
+      mysql-db:
+        condition: service_healthy
+    networks:
+      - default
+    ports:
+      - "3005:3005"
+      - "3443:3443"
+    environment:
+      - IDM_DB_HOST=mysql-db
+      - IDM_DB_NAME=${KEYROCK_DB_NAME}
+      - IDM_DB_USER=${KEYROCK_DB_USER}
+      - IDM_DB_PASS=${KEYROCK_DB_PASS}
+      - IDM_HOST=${KEYROCK_HOST}
+      - IDM_PORT=3005
+      - IDM_HTTPS_ENABLED=true
+      - IDM_HTTPS_PORT=3443
+      - IDM_ADMIN_USER=admin
+      - IDM_ADMIN_EMAIL=admin@test.com
+      - IDM_ADMIN_PASS=1234
+
+  pep-proxy:
+    image: quay.io/fiware/pep-proxy:8.2.0 # <-- UPDATED IMAGE TAG
+    hostname: pep-proxy
+    platform: linux/amd64
+    container_name: csds-pep-proxy
+    depends_on:
+      - keyrock
+    networks:
+      - default
+    ports:
+      - "1027:1027"
+    environment:
+      - PEP_PROXY_APP_HOST=orion
+      - PEP_PROXY_APP_PORT=1026
+      - PEP_PROXY_IDM_HOST=keyrock
+      - PEP_PROXY_HTTPS_ENABLED=false
+      - PEP_PROXY_APP_ID=${PEP_PROXY_APP_ID}
+      - PEP_PROXY_USERNAME=${PEP_PROXY_USERNAME}
+      - PEP_PROXY_PASSWORD=${PEP_PROXY_PASSWORD}
+      - PEP_PROXY_IDM_SSL_VALIDATE=false
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:1027/version"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   mongo-db:
     image: mongo:4.2
@@ -28,10 +81,30 @@ services:
       - default
     command: --nojournal
 
+  mysql-db:
+    image: mariadb:10.5
+    hostname: mysql-db
+    container_name: csds-mysql-db
+    networks:
+      - default
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${KEYROCK_DB_NAME}
+      - MYSQL_USER=${KEYROCK_DB_USER}
+      - MYSQL_PASSWORD=${KEYROCK_DB_PASS}
+    volumes:
+      - mysql-db:/var/lib/mysql
+    healthcheck:
+        test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+        interval: 10s
+        timeout: 5s
+        retries: 5
+        
 networks:
   default:
     external: true
     name: csds-api_default
 
 volumes:
-  mongo-db: ~
+  mongo-db:
+  mysql-db:

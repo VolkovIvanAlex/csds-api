@@ -1,6 +1,6 @@
 import { Injectable, ForbiddenException, NotFoundException, Inject } from '@nestjs/common';
 import { PrismaService } from 'src/infrastracture/prisma/prisma.service';
-import { ReportCreateDto, ReportUpdateDto } from './dto/report.dto';
+import { ProposeActionDto, ReportCreateDto, ReportUpdateDto } from './dto/report.dto';
 import { Report } from 'src/core/types/all.types';
 import { NGSIService } from '../ngsi/ngsi.service';
 import { BlockchainService } from './blockchain.service';
@@ -30,6 +30,7 @@ export class ReportService {
       status: { type: 'Property', value: created.status },
       severity: { type: 'Property', value: created.severity },
       stix: { type: 'Property', value: created.stix },
+      submitted: { type: 'Property', value: false },
       riskScore: created.riskScore ? { type: 'Property', value: created.riskScore } : undefined,
       organization: { type: 'Relationship', object: `urn:ngsi-ld:Organization:${created.organizationId}` },
       author: { type: 'Relationship', object: `urn:ngsi-ld:User:${userId}` },
@@ -536,6 +537,14 @@ export class ReportService {
     },
   });
 
+  // Also update the 'submitted' property in the NGSI-LD entity
+  const reportId = `urn:ngsi-ld:Report:${id}`;
+  const ngsiAttrs = {
+    submitted: { type: 'Property', value: true },
+    submittedAt: { type: 'Property', value: new Date().toISOString() },
+  };
+  await this.ngsiService.updateEntity(reportId, ngsiAttrs);
+
   // Map sharedReports to sharedWith
   const reportWithShared = {
     ...updatedReport,
@@ -549,4 +558,244 @@ export class ReportService {
 
   return reportWithShared;
   }
+
+  async handleSubmittedReport(notification: any): Promise<void> {
+    console.log('Received FIWARE notification for auto-sharing with government:', JSON.stringify(notification, null, 2));
+
+    if (!notification.data || notification.data.length === 0) {
+        console.log('Notification has no data, skipping.');
+        return;
+    }
+
+    const reportData = notification.data[0];
+    const reportId = reportData.id.replace('urn:ngsi-ld:Report:', '');
+
+    // 1. Find the source report
+    const sourceReport = await this.prisma.report.findUnique({
+        where: { id: reportId },
+    });
+
+    if (!sourceReport) {
+        console.warn(`Report with ID ${reportId} not found in database.`);
+        return;
+    }
+
+    const sourceOrgId = sourceReport.organizationId;
+
+    // 2. Find all organizations that Government Body users are members of
+    const govBodyUserOrgs = await this.prisma.userOrganization.findMany({
+        where: {
+            user: {
+                role: 'GovBody',
+            },
+        },
+        select: {
+            organizationId: true,
+        },
+    });
+
+    // Get a unique list of all government organization IDs
+    const govOrgIds = new Set(govBodyUserOrgs.map(uo => uo.organizationId));
+
+    // Ensure the source organization isn't in the share list
+    govOrgIds.delete(sourceOrgId);
+
+    if (govOrgIds.size === 0) {
+        console.log(`No government organizations to share report ${reportId} with.`);
+        return;
+    }
+
+    console.log(`Auto-sharing report ${reportId} with ${govOrgIds.size} government organizations.`);
+
+    // 3. Prepare the data for sharing
+    const sharesToCreate = Array.from(govOrgIds).map(targetOrgId => ({
+        reportId: sourceReport.id,
+        sourceOrgId: sourceOrgId,
+        targetOrgId: targetOrgId!,
+        sharedAt: new Date(),
+        acceptedShare: false,
+    }));
+
+    // 4. Create all the share records in the database
+    await this.prisma.sharedReportsWithOrganizations.createMany({
+        data: sharesToCreate,
+        skipDuplicates: true,
+    });
+    console.log(`Successfully created ${sharesToCreate.length} share records for report ${reportId}.`);
+}
+
+// Add this new method inside your ReportService class
+
+async broadcastToNetwork(reportId: string, userId: string) {
+    // 1. Permission Check: Ensure the user is a GovBody
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user || user.role !== 'GovBody') {
+        throw new ForbiddenException('Only government body users can broadcast reports.');
+    }
+
+    // 2. Fetch the source report to get its sphere
+    const sourceReport = await this.prisma.report.findUnique({
+        where: { id: reportId },
+        include: { organization: true },
+    });
+
+    if (!sourceReport) {
+        throw new NotFoundException(`Report with ID ${reportId} not found.`);
+    }
+
+    const sphere = sourceReport.organization.sphere;
+    const sourceOrgId = sourceReport.organizationId;
+
+    // 3. Find all organizations in the same sphere
+    const sameSphereOrgs = sphere
+        ? await this.prisma.organization.findMany({
+              where: {
+                  sphere: sphere,
+                  id: { not: sourceOrgId },
+              },
+          })
+        : [];
+
+    // 4. Find all organizations that Data Consumer users are members of
+    const dataConsumerUserOrgs = await this.prisma.userOrganization.findMany({
+        where: {
+            user: {
+                role: 'DataConsumer',
+            },
+        },
+        select: {
+            organizationId: true,
+        },
+    });
+    const dataConsumerOrgIds = dataConsumerUserOrgs.map(uo => uo.organizationId);
+
+    // 5. Combine and create a unique list of all target organization IDs
+    const targetOrgIds = new Set([
+        ...sameSphereOrgs.map(org => org.id),
+        ...dataConsumerOrgIds
+    ]);
+    
+    // Ensure the source organization isn't in the share list
+    targetOrgIds.delete(sourceOrgId);
+
+    if (targetOrgIds.size === 0) {
+        return { message: 'No organizations found to broadcast to.' };
+    }
+
+    console.log(`Broadcasting report ${reportId} to ${targetOrgIds.size} organizations.`);
+
+    // 6. Prepare and create share records
+    const sharesToCreate = Array.from(targetOrgIds).map(targetOrgId => ({
+        reportId: sourceReport.id,
+        sourceOrgId: sourceOrgId,
+        targetOrgId: targetOrgId!,
+        sharedAt: new Date(),
+        acceptedShare: false,
+    }));
+
+    const { count } = await this.prisma.sharedReportsWithOrganizations.createMany({
+        data: sharesToCreate,
+        skipDuplicates: true,
+    });
+
+    return {
+        message: `Report successfully broadcasted to ${count} new organizations.`,
+        broadcastCount: count,
+    };
+}
+
+async proposeResponseAction(reportId: string, userId: string, dto: ProposeActionDto) {
+    // 1. Permission Check: Ensure the user is a DataConsumer
+    const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        include: {
+            organizations: { // <-- THIS IS THE FIX
+                select: {
+                    organizationId: true,
+                },
+            },
+        },
+    });
+    if (!user || user.role !== 'DataConsumer') {
+        throw new ForbiddenException('Only data consumers can propose response actions.');
+    }
+
+    // 2. Security Check: Ensure the user has access to this report
+    // (This is crucial to prevent users from commenting on reports they can't see)
+    const canAccessReport = await this.prisma.sharedReportsWithOrganizations.findFirst({
+        where: {
+            reportId: reportId,
+            targetOrgId: { in: user.organizations.map(org => org.organizationId) },
+        },
+    });
+
+    const report = await this.prisma.report.findUnique({ where: {id: reportId}});
+
+    if (!canAccessReport && report?.authorId !== userId) {
+        throw new ForbiddenException('You do not have access to this report.');
+    }
+
+    // 3. Create the response action in the database
+    const newAction = await this.prisma.responseAction.create({
+        data: {
+            description: dto.description,
+            reportId: reportId,
+            proposedById: userId,
+        },
+    });
+    
+    // 4. Create a corresponding NGSI-LD entity
+    const actionId = `urn:ngsi-ld:ResponseAction:${newAction.id}`;
+    const ngsiPayload = {
+        id: actionId,
+        type: 'ResponseAction',
+        description: { type: 'Property', value: newAction.description },
+        status: { type: 'Property', value: newAction.status },
+        proposedBy: { type: 'Relationship', object: `urn:ngsi-ld:User:${userId}`},
+        proposedFor: { type: 'Relationship', object: `urn:ngsi-ld:Report:${reportId}`}
+    };
+    await this.ngsiService.createEntity(ngsiPayload).toPromise();
+
+    return newAction;
+}
+
+async getResponseActions(reportId: string, userId: string) {
+    // 1. Permission Check: Verify user belongs to the report's organization
+    const report = await this.prisma.report.findUnique({
+        where: { id: reportId },
+    });
+
+    if (!report) {
+        throw new NotFoundException('Report not found.');
+    }
+
+    const userOrganizations = await this.prisma.userOrganization.findMany({
+        where: { userId },
+        select: { organizationId: true },
+    });
+    
+    const userOrgIds = userOrganizations.map(uo => uo.organizationId);
+    if (!userOrgIds.includes(report.organizationId)) {
+        throw new ForbiddenException('You do not have permission to view these actions.');
+    }
+
+    // 2. Fetch all response actions for the report, including the proposer's name
+    const actions = await this.prisma.responseAction.findMany({
+        where: { reportId },
+        include: {
+            proposedBy: {
+                select: {
+                    name: true,
+                },
+            },
+        },
+        orderBy: {
+            createdAt: 'desc',
+        },
+    });
+
+    console.log(actions);
+    return actions;
+}
+
 }

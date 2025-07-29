@@ -6,6 +6,7 @@ import {
   IsNotEmpty,
   IsDefined
 } from 'class-validator';
+import { UserRole } from '@prisma/client';
 
 export class UserCreateDto {
   @IsString()
@@ -15,7 +16,7 @@ export class UserCreateDto {
 
   @IsString()
   @IsOptional()
-  role: string;
+  role: UserRole | null | undefined;
 
   @IsString()
   @IsOptional()
