@@ -71,7 +71,8 @@ model Report {
   severity        String   // Replaced enum with String
   submittedAt     DateTime?
   submitted       Boolean @default(false)
-  stix            String
+  broadcasted     Boolean @default(false)
+  stix            Json
   blockchainHash  String?
   collectionAddress  String?
   collectionPrivateKey  String?

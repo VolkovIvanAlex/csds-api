@@ -55,15 +55,6 @@ export class ReportController {
       return this.reportService.revokeShare(id, sourceOrgId, targetOrgId, req.user['id']);
     }
 
-    @Patch(':id/accept-share')
-    async acceptShare(@Param('id') reportId: string, @Req() req: AuthenticatedRequest) {
-        const userId = req.user['id'];
-        if (!userId) {
-        throw new Error('Unauthorized');
-        }
-        return this.reportService.acceptShare(reportId, userId);
-    }
-
     @Post(':id/submit')
     async submitReport(
         @Param('id') id: string,
@@ -79,6 +70,15 @@ export class ReportController {
     ) {
         const userId = req.user['id'];
         return this.reportService.broadcastToNetwork(id, userId);
+    }
+
+    @Post(':id/remove-from-network')
+    removeReportFromNetwork(
+        @Param('id') id: string,
+        @Req() req: AuthenticatedRequest,
+    ) {
+        const userId = req.user['id'];
+        return this.reportService.removeFromNetwork(id, userId);
     }
 
     @Post(':id/response-actions')

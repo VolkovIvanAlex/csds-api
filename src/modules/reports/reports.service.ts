@@ -129,7 +129,7 @@ export class ReportService {
         },
         select: {
           id: true, title: true, description: true, attachments: true, typeOfThreat: true,
-          status: true, severity: true, submittedAt: true, submitted: true,
+          status: true, severity: true, submittedAt: true, submitted: true, broadcasted: true,
           stix: true, blockchainHash: true,riskScore: true, emailsToShare: true,
           author: {
             select: { id: true, name: true, email: true,},
@@ -167,8 +167,8 @@ export class ReportService {
         report: {
           select: {
             id: true, title: true, description: true, attachments: true, typeOfThreat: true, 
-            status: true, severity: true, submittedAt: true, submitted: true, stix: true, 
-            blockchainHash: true, riskScore: true, emailsToShare: true,
+            status: true, severity: true, submittedAt: true, submitted: true, broadcasted: true, 
+            stix: true, blockchainHash: true, riskScore: true, emailsToShare: true,
             author: {
               select: { id: true, name: true, email: true, },
             },
@@ -250,29 +250,29 @@ export class ReportService {
     });
     const shareIndex = existingShares.length + 1;
 
-    const { isNewCollection, blockchainHash, collectionAddress, collectionPrivateKey, nftPrivateKey } = await this.blockchainService.shareReportOnBlockchain(
-      reportId,
-      shareIndex,
-      report.title,
-      report.description,
-      report.organization.wallet,
-      targetOrg.wallet,
-      report.collectionPrivateKey,
-      report.collectionAddress,
-      report.organization.name,
-      targetOrg.name,
-      report.typeOfThreat,
-      report.severity,
-      report.status
-    );
+    // const { isNewCollection, blockchainHash, collectionAddress, collectionPrivateKey, nftPrivateKey } = await this.blockchainService.shareReportOnBlockchain(
+    //   reportId,
+    //   shareIndex,
+    //   report.title,
+    //   report.description,
+    //   report.organization.wallet,
+    //   targetOrg.wallet,
+    //   report.collectionPrivateKey,
+    //   report.collectionAddress,
+    //   report.organization.name,
+    //   targetOrg.name,
+    //   report.typeOfThreat,
+    //   report.severity,
+    //   report.status
+    // );
 
     // If new collection was generated, update report with collectionAddress and collectionPrivateKey
-    if (isNewCollection) {
-      await this.prisma.report.update({
-        where: { id: reportId },
-        data: { collectionAddress, collectionPrivateKey },
-      });
-    }
+    // if (isNewCollection) {
+    //   await this.prisma.report.update({
+    //     where: { id: reportId },
+    //     data: { collectionAddress, collectionPrivateKey },
+    //   });
+    // }
 
     // Create share record with blockchainHash
     await this.prisma.sharedReportsWithOrganizations.create({
@@ -282,8 +282,8 @@ export class ReportService {
         targetOrgId,
         sharedAt: new Date(),
         acceptedShare: false,
-        blockchainHash,
-        nftPrivateKey,
+        // blockchainHash,
+        // nftPrivateKey,
       },
     });
     // Fetch updated report
@@ -354,9 +354,9 @@ export class ReportService {
     if (!share) {
       throw new NotFoundException('Share not found');
     }
-    if (!share.nftPrivateKey || !share.blockchainHash) {
-      throw new NotFoundException('Report share was not submitted');
-    }
+    // if (!share.nftPrivateKey || !share.blockchainHash) {
+    //   throw new NotFoundException('Report share was not submitted');
+    // }
     // Verify target organization
     const targetOrg = await this.prisma.organization.findUnique({
       where: { id: targetOrgId },
@@ -376,15 +376,15 @@ export class ReportService {
       throw new NotFoundException('Share index not found');
     }
 
-    await this.blockchainService.revokeShareOnBlockchain(
-      reportId,
-      shareIndex,
-      report.collectionPrivateKey,
-      report.collectionAddress,
-      share.nftPrivateKey,
-      share.blockchainHash,
-      targetOrg.wallet
-    );
+    // await this.blockchainService.revokeShareOnBlockchain(
+    //   reportId,
+    //   shareIndex,
+    //   report.collectionPrivateKey,
+    //   report.collectionAddress,
+    //   share.nftPrivateKey,
+    //   share.blockchainHash,
+    //   targetOrg.wallet
+    // );
 
     // Delete the share record
     await this.prisma.sharedReportsWithOrganizations.delete({
@@ -426,38 +426,6 @@ export class ReportService {
       };
 
       return reportWithShared;
-  }
-
-  async acceptShare(reportId: string, userId: string) {
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user || !user.organizationId) {
-      throw new NotFoundException('User or organization not found');
-    }
-    const sharedRecord = await this.prisma.sharedReportsWithOrganizations.findUnique({
-      where: {
-        sourceOrgId_targetOrgId_reportId: {
-          reportId,
-          targetOrgId: user.organizationId,
-          sourceOrgId: undefined as any, // We'll find it below
-        },
-      },
-    });
-    if (!sharedRecord) {
-      throw new NotFoundException('Shared report not found for your organization');
-    }
-    // Use composite key with proper sourceOrgId
-    return this.prisma.sharedReportsWithOrganizations.update({
-      where: {
-        sourceOrgId_targetOrgId_reportId: {
-          reportId,
-          targetOrgId: user.organizationId,
-          sourceOrgId: sharedRecord.sourceOrgId,
-        },
-      },
-      data: {
-        acceptedShare: true,
-      },
-    });
   }
 
   async submitReport(id: string, userId: string) {
@@ -544,6 +512,7 @@ export class ReportService {
     submittedAt: { type: 'Property', value: new Date().toISOString() },
   };
   await this.ngsiService.updateEntity(reportId, ngsiAttrs);
+  await this.shareReportToGovernmentBodies(id);
 
   // Map sharedReports to sharedWith
   const reportWithShared = {
@@ -558,73 +527,6 @@ export class ReportService {
 
   return reportWithShared;
   }
-
-  async handleSubmittedReport(notification: any): Promise<void> {
-    console.log('Received FIWARE notification for auto-sharing with government:', JSON.stringify(notification, null, 2));
-
-    if (!notification.data || notification.data.length === 0) {
-        console.log('Notification has no data, skipping.');
-        return;
-    }
-
-    const reportData = notification.data[0];
-    const reportId = reportData.id.replace('urn:ngsi-ld:Report:', '');
-
-    // 1. Find the source report
-    const sourceReport = await this.prisma.report.findUnique({
-        where: { id: reportId },
-    });
-
-    if (!sourceReport) {
-        console.warn(`Report with ID ${reportId} not found in database.`);
-        return;
-    }
-
-    const sourceOrgId = sourceReport.organizationId;
-
-    // 2. Find all organizations that Government Body users are members of
-    const govBodyUserOrgs = await this.prisma.userOrganization.findMany({
-        where: {
-            user: {
-                role: 'GovBody',
-            },
-        },
-        select: {
-            organizationId: true,
-        },
-    });
-
-    // Get a unique list of all government organization IDs
-    const govOrgIds = new Set(govBodyUserOrgs.map(uo => uo.organizationId));
-
-    // Ensure the source organization isn't in the share list
-    govOrgIds.delete(sourceOrgId);
-
-    if (govOrgIds.size === 0) {
-        console.log(`No government organizations to share report ${reportId} with.`);
-        return;
-    }
-
-    console.log(`Auto-sharing report ${reportId} with ${govOrgIds.size} government organizations.`);
-
-    // 3. Prepare the data for sharing
-    const sharesToCreate = Array.from(govOrgIds).map(targetOrgId => ({
-        reportId: sourceReport.id,
-        sourceOrgId: sourceOrgId,
-        targetOrgId: targetOrgId!,
-        sharedAt: new Date(),
-        acceptedShare: false,
-    }));
-
-    // 4. Create all the share records in the database
-    await this.prisma.sharedReportsWithOrganizations.createMany({
-        data: sharesToCreate,
-        skipDuplicates: true,
-    });
-    console.log(`Successfully created ${sharesToCreate.length} share records for report ${reportId}.`);
-}
-
-// Add this new method inside your ReportService class
 
 async broadcastToNetwork(reportId: string, userId: string) {
     // 1. Permission Check: Ensure the user is a GovBody
@@ -698,29 +600,91 @@ async broadcastToNetwork(reportId: string, userId: string) {
         skipDuplicates: true,
     });
 
+    await this.prisma.report.update({
+        where: { id: reportId },
+        data: { broadcasted: true },
+    });
+
     return {
         message: `Report successfully broadcasted to ${count} new organizations.`,
         broadcastCount: count,
     };
 }
 
+async removeFromNetwork(reportId: string, userId: string) {
+    // 1. Permission Check: Ensure the user is a GovBody
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user || user.role !== 'GovBody') {
+        throw new ForbiddenException('Only government body users can remove reports from the network.');
+    }
+
+    // 2. Verify the report exists
+    const report = await this.prisma.report.findUnique({
+        where: { id: reportId },
+    });
+    if (!report) {
+        throw new NotFoundException(`Report with ID ${reportId} not found.`);
+    }
+
+    // 3. Find all organization IDs that belong to Government Body users
+    const govBodyUserOrgs = await this.prisma.userOrganization.findMany({
+        where: {
+            user: {
+                role: 'GovBody',
+            },
+        },
+        select: {
+            organizationId: true,
+        },
+    });
+    const govOrgIds = [...new Set(govBodyUserOrgs.map(uo => uo.organizationId))];
+
+    // 4. Delete all share records for this report where the target organization
+    // is NOT one of the government bodies.
+    const { count } = await this.prisma.sharedReportsWithOrganizations.deleteMany({
+        where: {
+            reportId: reportId,
+            NOT: {
+                targetOrgId: {
+                    in: govOrgIds,
+                },
+            },
+        },
+    });
+
+    if (count > 0) {
+        await this.prisma.report.update({
+            where: { id: reportId },
+            data: { broadcasted: false },
+        });
+    }
+
+    if (count === 0) {
+        return { message: 'No non-government shares found to remove.' };
+    }
+
+    return {
+        message: `Successfully removed the report from ${count} organizations' networks.`,
+        removedCount: count,
+    };
+}
+
 async proposeResponseAction(reportId: string, userId: string, dto: ProposeActionDto) {
-    // 1. Permission Check: Ensure the user is a DataConsumer
     const user = await this.prisma.user.findUnique({
         where: { id: userId },
         include: {
-            organizations: { // <-- THIS IS THE FIX
+            organizations: {
                 select: {
                     organizationId: true,
                 },
             },
         },
     });
-    if (!user || user.role !== 'DataConsumer') {
-        throw new ForbiddenException('Only data consumers can propose response actions.');
+    if (!user) {
+        throw new ForbiddenException('No user found for id: ', userId);
     }
 
-    // 2. Security Check: Ensure the user has access to this report
+    // Security Check: Ensure the user has access to this report
     // (This is crucial to prevent users from commenting on reports they can't see)
     const canAccessReport = await this.prisma.sharedReportsWithOrganizations.findFirst({
         where: {
@@ -735,7 +699,7 @@ async proposeResponseAction(reportId: string, userId: string, dto: ProposeAction
         throw new ForbiddenException('You do not have access to this report.');
     }
 
-    // 3. Create the response action in the database
+    // Create the response action in the database
     const newAction = await this.prisma.responseAction.create({
         data: {
             description: dto.description,
@@ -744,7 +708,7 @@ async proposeResponseAction(reportId: string, userId: string, dto: ProposeAction
         },
     });
     
-    // 4. Create a corresponding NGSI-LD entity
+    // Create a corresponding NGSI-LD entity
     const actionId = `urn:ngsi-ld:ResponseAction:${newAction.id}`;
     const ngsiPayload = {
         id: actionId,
@@ -785,7 +749,8 @@ async getResponseActions(reportId: string, userId: string) {
         include: {
             proposedBy: {
                 select: {
-                    name: true,
+                    name: true, 
+                    email: true,
                 },
             },
         },
@@ -793,9 +758,57 @@ async getResponseActions(reportId: string, userId: string) {
             createdAt: 'desc',
         },
     });
-
-    console.log(actions);
     return actions;
 }
+
+private async shareReportToGovernmentBodies(reportId: string): Promise<void> {
+    console.log(`Initiating automatic share to government for report: ${reportId}`);
+
+    const sourceReport = await this.prisma.report.findUnique({
+        where: { id: reportId },
+    });
+
+    if (!sourceReport) {
+        console.warn(`[Auto-share] Report with ID ${reportId} not found in database. Skipping.`);
+        return;
+    }
+
+    const sourceOrgId = sourceReport.organizationId;
+
+    const govBodyUserOrgs = await this.prisma.userOrganization.findMany({
+        where: {
+            user: {
+                role: 'GovBody',
+            },
+        },
+        select: {
+            organizationId: true,
+        },
+    });
+
+    const govOrgIds = new Set(govBodyUserOrgs.map(uo => uo.organizationId));
+    govOrgIds.delete(sourceOrgId); // Don't share with the source org
+
+    if (govOrgIds.size === 0) {
+        console.log(`[Auto-share] No government organizations to share report ${reportId} with.`);
+        return;
+    }
+
+    console.log(`[Auto-share] Sharing report ${reportId} with ${govOrgIds.size} government organizations.`);
+
+    const sharesToCreate = Array.from(govOrgIds).map(targetOrgId => ({
+        reportId: sourceReport.id,
+        sourceOrgId: sourceOrgId,
+        targetOrgId: targetOrgId!,
+        sharedAt: new Date(),
+        acceptedShare: false,
+    }));
+
+    await this.prisma.sharedReportsWithOrganizations.createMany({
+        data: sharesToCreate,
+        skipDuplicates: true,
+    });
+    console.log(`[Auto-share] Successfully created ${sharesToCreate.length} share records for report ${reportId}.`);
+  }
 
 }

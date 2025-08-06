@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsArray, IsOptional, IsNumber, MinLength } from 'class-validator';
+import { IsString, IsNotEmpty, IsArray, IsOptional, IsNumber, MinLength, IsObject } from 'class-validator';
 export class ReportCreateDto {
   @IsString()
   @IsNotEmpty()
@@ -25,9 +25,9 @@ export class ReportCreateDto {
   @IsNotEmpty()
   severity: string;
 
-  @IsString()
+  @IsObject()
   @IsNotEmpty()
-  stix: string;
+  stix: any;
 
   @IsString()
   @IsOptional()
@@ -77,9 +77,9 @@ export class ReportUpdateDto {
   @IsOptional()
   submittedAt?: string;
 
-  @IsString()
+  @IsObject()
   @IsOptional()
-  stix?: string;
+  stix: any;
 
   @IsString()
   @IsOptional()

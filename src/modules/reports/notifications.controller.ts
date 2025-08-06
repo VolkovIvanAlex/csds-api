@@ -10,13 +10,13 @@ export class NotificationController {
   private readonly reportService: ReportService
 
   @Post('submitted')
-  @HttpCode(HttpStatus.OK) // Respond with 200 OK so Orion knows we received it
+  //@HttpCode(HttpStatus.OK) // Respond with 200 OK so Orion knows we received it
   handleFiwareNotification(@Body() notification: any) {
     console.log("Handling subscription ...");
     // Asynchronously handle the logic without blocking the response to Orion
-    this.reportService.handleSubmittedReport(notification).catch(err => {
-        console.error('Error handling FIWARE notification:', err);
-    });
+    // this.reportService.handleSubmittedReport(notification).catch(err => {
+    //     console.error('Error handling FIWARE notification:', err);
+    // });
     return;
   }
 }

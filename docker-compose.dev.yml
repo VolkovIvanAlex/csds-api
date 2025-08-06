@@ -12,17 +12,5 @@ services:
     ports:
       - '5432:5432'
 
-  test_db:
-    image: postgres:latest
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER_MAIN}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD_MAIN}
-      POSTGRES_DB: ${POSTGRES_DATABASE_MAIN}
-    volumes:
-      - key_database_data_2:/var/lib/postgresql/data
-    ports:
-      - '5433:5432' # Expose on a different port to avoid conflicts
-
 volumes:
   key_database_data_1:
-  key_database_data_2:
