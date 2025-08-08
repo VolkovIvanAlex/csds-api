@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  # PostgreSQL
+  csds_api_db:
+    image: postgres:latest
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER_MAIN}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD_MAIN}
+      POSTGRES_DB: ${POSTGRES_DATABASE_MAIN}
+    ports:
+      - '${DATABASE_PORT}:5432'
+    volumes:
+      - key_database_data_1:/var/lib/postgresql/data
+
+  # Backend API
+  csds_api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        DATABASE_URL: ${DATABASE_URL}
+    container_name: csds_api
+    depends_on:
+      - csds_api_db
+    env_file:
+      - .env
+    ports:
+      - '${BACKEND_PORT}:${BACKEND_PORT}'
+    restart: "no"
+
+volumes:
+  key_database_data_1:
