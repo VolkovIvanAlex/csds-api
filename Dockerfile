@@ -1,35 +1,32 @@
-# Stage 1: Build
-FROM node:22-alpine as build
-
-ARG DATABASE_URL
-
-ENV DATABASE_URL=${DATABASE_URL}
-
+# Stage 1: Build Dependencies
+FROM node:22-alpine AS deps
 WORKDIR /app
 COPY package.json yarn.lock ./
-RUN yarn install
+RUN yarn install --frozen-lockfile
 
-# Copy source and prisma files
+# Stage 2: Build Application
+FROM node:22-alpine AS build
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-
-# Generate Prisma client
 RUN npx prisma generate
+RUN yarn build
 
-# Build NestJS app
-RUN yarn build && ls -la dist
-
-# Stage 2: Runtime
+# Stage 3: Production Runtime
 FROM node:22-alpine
-
 ENV NODE_ENV=production
 WORKDIR /app
 
-# Copy from build stage
+# Copy only production dependencies
+COPY package.json yarn.lock ./
+RUN yarn install --production --frozen-lockfile
+
+# Copy built application and prisma schema
 COPY --from=build /app/dist ./dist
-COPY --from=build /app/node_modules ./node_modules
-COPY --from=build /app/package.json ./package.json
-COPY --from=build /app/yarn.lock ./yarn.lock
 COPY --from=build /app/prisma ./prisma
 
-# Default command
+# Expose the port the app runs on
+EXPOSE 8000
+
+# The command to run the application
 CMD ["yarn", "start:prod"]
