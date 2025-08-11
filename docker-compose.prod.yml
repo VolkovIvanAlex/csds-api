@@ -13,6 +13,8 @@ services:
       - '${DATABASE_PORT}:5432'
     volumes:
       - key_database_data_1:/var/lib/postgresql/data
+    networks: # Add this to connect the DB to the network
+      - default
 
   # Backend API
   csds_api:
@@ -29,6 +31,15 @@ services:
     ports:
       - '${BACKEND_PORT}:${BACKEND_PORT}'
     restart: unless-stopped
+    networks: # Add this to connect the API to the network
+      - default
 
 volumes:
   key_database_data_1:
+
+# --- THIS IS THE FIX ---
+# Explicitly define the network and mark it as external
+networks:
+  default:
+    external: true
+    name: csds-api_default
