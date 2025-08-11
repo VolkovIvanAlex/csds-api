@@ -34,7 +34,7 @@ services:
     networks: # Add this to connect the API to the network
       - default
 
-nginx:
+  nginx:
     image: nginx:latest
     container_name: csds_nginx
     depends_on:
