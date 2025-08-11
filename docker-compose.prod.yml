@@ -28,7 +28,7 @@ services:
       - .env
     ports:
       - '${BACKEND_PORT}:${BACKEND_PORT}'
-    restart: "no"
+    restart: unless-stopped
 
 volumes:
   key_database_data_1:

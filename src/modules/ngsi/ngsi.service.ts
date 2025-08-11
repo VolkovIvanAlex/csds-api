@@ -2,11 +2,13 @@ import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { catchError, firstValueFrom, map, Observable, of, throwError } from 'rxjs';
 import { AxiosResponse } from 'axios';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class NGSIService {
   private readonly logger = new Logger(NGSIService.name);
-  private readonly orionUrl = 'http://localhost:1026/ngsi-ld/v1/entities';
+  private readonly orionUrl: string;
+  //private readonly orionUrl = 'http://localhost:1026/ngsi-ld/v1/entities';
   private readonly headers = {
     'Content-Type': 'application/ld+json',
     'Fiware-Service': 'csds',
@@ -18,7 +20,9 @@ export class NGSIService {
 
   @Inject()
   private readonly httpService: HttpService;
-  constructor() { }
+  constructor(private readonly configService: ConfigService) { 
+    this.orionUrl = this.configService.get<string>('ORION_URL', 'http://localhost:1026/ngsi-ld/v1/entities');
+  }
 
   createEntity(entity: any): Observable<AxiosResponse<any>> {
     const payload = {
