@@ -25,6 +25,9 @@ RUN yarn install --production --frozen-lockfile
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/prisma ./prisma
 
+# Copy the generated Prisma Client from the build stage into the final image
+COPY --from=build /app/node_modules/.prisma/client ./node_modules/.prisma/client
+
 # Expose the port the app runs on
 EXPOSE 8000
 
