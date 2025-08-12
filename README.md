@@ -86,7 +86,7 @@ To get all reports from orion CB :
 curl -X GET "http://localhost:1026/ngsi-ld/v1/entities?type=Report" \
   -H "Accept: application/ld+json" \
   -H "Fiware-Service: csds" \
-  -H "Fiware-ServicePath: /"
+  -H "Fiware-ServicePath: /" | jq
 ```
 
 To cler context broker : 
