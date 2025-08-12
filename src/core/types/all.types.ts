@@ -25,6 +25,8 @@ export interface Report {
   status: string;
   severity: string;
   submittedAt: Date | null;
+  submitted: boolean;
+  broadcasted: boolean;
   stix?: Object | null;
   blockchainHash?: string | null;
   riskScore?: number | null;

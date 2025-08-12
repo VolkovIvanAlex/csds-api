@@ -6,6 +6,7 @@ import { User } from '@prisma/client';
 import { FileService } from '../../infrastracture/file-manager/file.service';
 import { nanoid } from 'nanoid';
 import { PrivyService } from 'src/infrastracture/privy/privy.service';
+import { OrganizationService } from '../organization/organization.service';
 
 @Injectable()
 export class UserService {
@@ -17,6 +18,8 @@ export class UserService {
     private fileService: FileService;
     @Inject()
     private privyService: PrivyService;
+    @Inject()
+    private organizationService: OrganizationService;
 
   async findMany(): Promise<User[]> {
     return this.prisma.user.findMany();
@@ -53,7 +56,6 @@ export class UserService {
     const { privyAccessToken, ...data } = userCreateDto;
   
     const { userId } = await this.privyService.client.verifyAuthToken(privyAccessToken);
-    console.log("userId - ", userId);
     const { linkedAccounts } = await this.privyService.client.getUserById(userId);
   
     const accountWithName: any = linkedAccounts?.find((account: any) =>
@@ -69,18 +71,74 @@ export class UserService {
     const [privyFirstName, privyLastName] = (accountWithName?.name || '').split(' ');
     const email = accountWithEmail?.email || accountWithEmail?.address;
   
-    const userData = {
-      privyId: userId,
-      email: email || `${nanoid()}@example.com`,
-      name: data.name || [privyFirstName, privyLastName].filter(Boolean).join(' ') || 'Name',
-      role: data.role,
-      submissionQuatity: data.submissionQuatity ?? 0,
-      organizationId: data.organizationId || null, // Safe for optional org
-      photo: data.photo,
-      jobTitle: data.jobTitle,
-    };
-  
-    return this.prisma.user.create({ data: userData });
+    const newUser = await this.prisma.user.create({
+      data: {
+        privyId: userId,
+        email: email || `${nanoid()}@example.com`,
+        name: data.name || 'New User',
+        role: data.role,
+        submissionQuatity: 0,
+        jobTitle: data.jobTitle,
+        photo: data.photo,
+        // organizationId is initially null and will be updated if needed
+      },
+    });
+
+    if (data.role === 'DataConsumer') {
+      // Create a default organization for this data consumer
+      const newOrganization = await this.organizationService.create(
+        {
+          name: `${newUser.name}'s Data Consumer Organization.`,
+          sphere: 'Analytics',
+        },
+        newUser.id, // Use the new user's ID as the founder
+      );
+      // Update the user to link them to their new organization
+      await this.prisma.user.update({
+        where: { id: newUser.id },
+        data: { organizationId: newOrganization.id },
+      });
+    }
+
+    if (data.role === 'GovBody') {
+      // Create a default organization for this government user
+      const newOrganization = await this.organizationService.create(
+        {
+          name: `${newUser.name}'s Government Department`,
+          sphere: 'Government',
+        },
+        newUser.id, // Use the new user's ID as the founder
+      );
+
+      // Update the user to link them to their new organization
+      await this.prisma.user.update({
+        where: { id: newUser.id },
+        data: { organizationId: newOrganization.id },
+      });
+
+      // --- Step 4: Share all existing reports with this new GovBody organization ---
+      const allReports = await this.prisma.report.findMany({
+        select: { id: true, organizationId: true },
+      });
+
+      if (allReports.length > 0) {
+        const sharesToCreate = allReports.map(report => ({
+          reportId: report.id,
+          sourceOrgId: report.organizationId,
+          targetOrgId: newOrganization.id,
+          sharedAt: new Date(),
+          acceptedShare: true, // Auto-accepted for government bodies
+        }));
+
+        await this.prisma.sharedReportsWithOrganizations.createMany({
+          data: sharesToCreate,
+          skipDuplicates: true,
+        });
+      }
+    }
+
+    // Return the newly created user
+    return this.prisma.user.findUniqueOrThrow({ where: { id: newUser.id } });
   }
 
   async update(id: string, data: UserUpdateDto, files?: Express.Multer.File[]): Promise<User> {

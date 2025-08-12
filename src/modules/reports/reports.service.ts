@@ -110,6 +110,15 @@ export class ReportService {
   }
 
   async getUserReports(userId: string): Promise<Report[]> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
     // Find all organizations the user is part of
     const userOrganizations = await this.prisma.userOrganization.findMany({
       where: { userId },
